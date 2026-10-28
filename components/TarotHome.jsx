@@ -120,7 +120,7 @@ function Logo() {
 }
 
 export default class TarotHome extends React.Component {
-  state = { step: 1, topic: 'career', spread: 'time', question: '',
+  state = { step: 1, topic: 'career', spread: 'time', question: '', qErr: false,
     phase: 'vortex', order: [], delays: null, busy: false,
     picks: [], flyers: [], landed: [], shuffleId: 0,
     arrange: true, slotOf: [], flipped: [], selected: null, hiddenCards: [], dropTarget: null, swapping: false,
@@ -156,6 +156,11 @@ export default class TarotHome extends React.Component {
   spreadDef() { return SPREADS.find((s) => s.key === this.state.spread) }
 
   startDraw = () => {
+    if (!this.state.question.trim()) {
+      this.setState({ qErr: true })
+      if (this.qRef.current) this.qRef.current.focus()
+      return
+    }
     this.clearTimers()
     this.endDrag()
     const order = shuffle([...Array(78).keys()])
@@ -285,7 +290,7 @@ export default class TarotHome extends React.Component {
   }
 
   vals() {
-    const { step, topic, spread, question, phase, order, delays, busy, picks, flyers, landed, shuffleId, arrange, slotOf, flipped, selected, hiddenCards, dropTarget, swapping, vw, toolW, faq } = this.state
+    const { step, topic, spread, question, qErr, phase, order, delays, busy, picks, flyers, landed, shuffleId, arrange, slotOf, flipped, selected, hiddenCards, dropTarget, swapping, vw, toolW, faq } = this.state
     const T = TAROT
     const isDesk = vw >= 900
     const sp = this.spreadDef()
@@ -416,7 +421,7 @@ export default class TarotHome extends React.Component {
     })
     const nFlipped = flipped.filter(Boolean).length
     const allFlipped = step === 3 && !arrange && nFlipped === need
-    const summary = allFlipped ? summarize(sp.key, sp.pos.map((p, pi) => { const pk = picked[cardAt(pi)]; return { label: p[0], card: pk.card, rev: !!pk.rev } })) : null
+    const summary = allFlipped ? summarize(sp.key, sp.pos.map((p, pi) => { const pk = picked[cardAt(pi)]; return { label: p[0], card: pk.card, rev: !!pk.rev } }), topic) : null
 
     const spreadDocs = SPREADS.map((s, i) => {
       const mx = Math.max(...s.pos.map((p) => p[2])), my = Math.max(...s.pos.map((p) => p[3]))
@@ -427,7 +432,7 @@ export default class TarotHome extends React.Component {
     const ready = landed.length >= need
 
     return {
-      isDesk, step, stepsNav, themes, spreads, sp, need, theme, question, phase, full, isDraw, tablePad,
+      isDesk, step, stepsNav, themes, spreads, sp, need, theme, question, qErr, phase, full, isDraw, tablePad,
       pv: { w: pvW, h: pvH, cw: pcw, ch: pch, slots: pvSlots, numSize: Math.round(pcw * 0.26) },
       deck: { cards: deckCards, h: H, cw, ch },
       shuffleFx: phase === 'vortex' ? R.shuffle(h, { cw, ch, R: Math.min(W, H) * 0.3, id: shuffleId }) : null,
@@ -597,9 +602,10 @@ export default class TarotHome extends React.Component {
                 </div>
 
                 <div style={css('display:flex;flex-direction:column;align-items:center;gap:18px;')}>
-                  <ChapterHead eyebrow="CAPITULUM · III" title="你的問題" en="Write it down, as if in ink" extra={<span style={css('margin-left:10px;font-size:13px;font-weight:400;letter-spacing:0.1em;color:#7d7566;')}>選填</span>} />
+                  <ChapterHead eyebrow="CAPITULUM · III" title="你的問題" en="Write it down, as if in ink" extra={<span style={css('margin-left:10px;font-size:13px;font-weight:400;letter-spacing:0.1em;color:#c9a45c;')}>必填</span>} />
                   <div style={css('width:100%;max-width:600px;')}>
-                    <Hv as="textarea" ref={this.qRef} value={question} onChange={(e) => this.setState({ question: e.target.value })} placeholder={v.theme.ph} rows={2} maxLength={80} aria-label="你的問題" style="width:100%;resize:none;padding:14px 4px 12px;font-size:clamp(16px,2.6vw,18px);line-height:1.9;text-align:center;letter-spacing:0.04em;color:#f3e9d2;background:transparent;border:none;border-bottom:1px solid rgba(201,164,92,0.5);outline:none;font-family:inherit;" focus="border-bottom:1px solid #e3c98f;box-shadow:0 12px 24px -18px rgba(227,201,143,0.6);" />
+                    <Hv as="textarea" ref={this.qRef} value={question} onChange={(e) => this.setState({ question: e.target.value, qErr: false })} placeholder={v.theme.ph} rows={2} maxLength={80} aria-label="你的問題" style="width:100%;resize:none;padding:14px 4px 12px;font-size:clamp(16px,2.6vw,18px);line-height:1.9;text-align:center;letter-spacing:0.04em;color:#f3e9d2;background:transparent;border:none;border-bottom:1px solid rgba(201,164,92,0.5);outline:none;font-family:inherit;" focus="border-bottom:1px solid #e3c98f;box-shadow:0 12px 24px -18px rgba(227,201,143,0.6);" />
+                    {v.qErr && <p role="alert" style={css('margin:12px 0 0;text-align:center;font-size:14px;line-height:1.8;color:#f0b8a8;')}>先寫下你的問題再抽牌，結論才會對得上你問的事。</p>}
                     <p style={css('margin:12px 0 0;text-align:center;font-size:12px;line-height:1.8;color:#7d7566;')}>問題寫具體一點比較好解讀，像「我該接受新的工作邀約嗎」就比「我的未來如何」好。</p>
                   </div>
                 </div>
@@ -709,6 +715,7 @@ export default class TarotHome extends React.Component {
                           <span style={css('height:1px;width:18px;background:rgba(201,164,92,0.5);')} />
                           <span style={css('font-size:15px;letter-spacing:0.24em;color:#f1dca6;')}>簡短結論</span>
                         </div>
+                        <p style={css('margin:0;font-size:14px;line-height:1.8;color:#a89f8e;')}>你問：「{question.trim()}」</p>
                         {v.summary.map((t) => <p key={t} style={css('margin:0;font-size:15px;line-height:2;color:#d6cab0;text-wrap:pretty;')}>{t}</p>)}
                       </div>
                     )}
