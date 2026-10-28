@@ -1,6 +1,6 @@
 'use client'
 // 夜讀塔羅首頁：主視覺、三步驟占卜（選主題與牌陣 → 抽牌 → 調整牌位與正逆位後翻牌）、牌陣說明、FAQ。
-// 版面照 Claude Design「Tarot Home v3」重現；正逆位改成抽完牌後由使用者逐張切換。
+// 版面照 Claude Design「Tarot Home v3」重現；抽完牌後使用者可憑感覺把牌轉向（不是選正逆位，按鈕不標示正逆）。
 import React from 'react'
 import { css, Hv } from '@/lib/css'
 import { TAROT } from '@/lib/tarot-data'
@@ -389,14 +389,14 @@ export default class TarotHome extends React.Component {
     })
     const rdCards = picked.slice(0, need).map((pk, i) => {
       const p = slotOf[i] == null ? i : slotOf[i], f = !!flipped[i], card = pk.card, rev = !!pk.rev, sel = selected === i
-      const backRing = rev ? 'rgba(195,186,255,0.7)' : 'rgba(201,164,92,0.35)'
+      const backRing = 'rgba(201,164,92,0.35)'
       return { i, ...posXY(p), z: sel ? 20 : 10, opacity: hiddenCards.includes(i) ? 0 : 1,
         lift: sel ? 'translateY(-10px) scale(1.05)' : 'none', touch: arrange ? 'none' : 'auto',
         backGlow: sel ? 'inset 0 0 0 5px #141327, inset 0 0 0 6px rgba(243,214,140,0.8), 0 0 30px rgba(243,214,140,0.65), 0 14px 30px rgba(0,0,0,0.6)'
-          : `inset 0 0 0 5px #141327, inset 0 0 0 6px ${backRing}, ${rev ? '0 0 22px rgba(150,140,255,0.4), ' : ''}0 14px 30px rgba(0,0,0,0.6)`,
+          : `inset 0 0 0 5px #141327, inset 0 0 0 6px ${backRing}, 0 14px 30px rgba(0,0,0,0.6)`,
         rot: f ? 'rotateY(180deg)' : 'rotateY(0deg)', zrot: rev ? 'rotate(180deg)' : 'rotate(0deg)',
         zTransition: arrange ? 'transform 600ms cubic-bezier(0.16,1,0.3,1)' : 'transform 900ms cubic-bezier(0.6,0,0.2,1)',
-        backMark: rev ? '#c3baff' : '#e3c98f',
+        backMark: '#e3c98f',
         faceGlow: !f ? '0 0 0 1px rgba(227,201,143,0.5)' : rev ? '0 0 0 1px rgba(195,186,255,0.85), 0 0 46px rgba(150,140,255,0.5), 0 14px 30px rgba(0,0,0,0.6)' : '0 0 0 1px rgba(227,201,143,0.85), 0 0 46px rgba(243,212,138,0.45), 0 14px 30px rgba(0,0,0,0.6)',
         burst: f ? R.burst(h, { w: rcw, h: rch, color: rev ? 'violet' : 'gold', key: 'rb' + i + '-' + shuffleId, seed: 9 + i }) : null,
         bgImg: `url("${card.img}")`, alt: `${card.name}（${card.en}）偉特塔羅牌${rev ? '逆位' : '正位'}`, num: card.num, name: card.name,
@@ -432,7 +432,7 @@ export default class TarotHome extends React.Component {
       tray, trayW, trayH, flyerEls, ready, picks, arrange, swapping,
       rd: { slots: rdSlots, cards: rdCards, cw: rcw, ch: rch, w: Math.round(units * rcw + (units - 1) * gap), h: Math.round(maxY * rowH + rch + labelH), numSize: Math.round(rcw * 0.22) },
       flipHint: arrange
-        ? (need > 1 ? '翻牌前，可以把牌拖到另一個牌位互換，或先後點選兩張牌；牌下方的按鈕可以切換正位或逆位。調整好了，按「翻牌」。' : '牌下方的按鈕可以切換正位或逆位。準備好了，就按「翻牌」。')
+        ? (need > 1 ? '翻牌前可以調整：把牌拖到別的位置互換，或先後點兩張牌對調；想把哪張牌轉過來，就按牌下面的「轉向」。好了就按「翻牌」。' : '翻牌前，想把牌轉過來就按牌下面的「轉向」。好了就按「翻牌」。')
         : allFlipped ? '所有牌都已翻開' : `點擊牌面，依序翻開 · ${nFlipped} / ${need}`,
       details, allFlipped, canFlipNext: step === 3 && !arrange && nFlipped < need, spreadDocs, faqs
     }
@@ -492,9 +492,9 @@ export default class TarotHome extends React.Component {
             <span style={css("font-family:'Cinzel',serif;font-size:clamp(11px,1.6vw,13px);letter-spacing:0.32em;color:#c9a45c;")}>RIDER · WAITE · MCMIX</span>
             <h1 style={css('margin:18px 0 0;font-weight:600;font-size:clamp(2.1rem,7.4vw,4.1rem);line-height:1.3;letter-spacing:0.1em;color:#f3e9d2;text-wrap:balance;')}>安靜下來，<br /><span style={css('background:linear-gradient(180deg,#f8ebc6 10%,#c9a45c 90%);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;filter:drop-shadow(0 0 18px rgba(227,201,143,0.35));')}>為你的問題抽一張牌</span></h1>
             <Divider style={{ margin: '22px 0 0' }} />
-            <p style={css('margin:20px 0 0;max-width:520px;font-size:clamp(15px,2.2vw,17px);line-height:2;color:#b3a993;text-wrap:pretty;')}>使用 1909 年偉特塔羅原版 78 張牌。選一個主題、想一個問題，親手抽牌，再一張一張翻開。牌不會替你做決定，但能幫你把問題看得更清楚。</p>
+            <p style={css('margin:20px 0 0;max-width:520px;font-size:clamp(15px,2.2vw,17px);line-height:2;color:#b3a993;text-wrap:pretty;')}>用 1909 年偉特塔羅原版 78 張牌。選好主題、想好問題，自己抽牌，再一張一張翻開。</p>
             <Hv href="#reading" style="margin-top:30px;display:inline-flex;align-items:center;gap:14px;min-height:54px;padding:14px 34px;border-radius:2px;font-size:16px;letter-spacing:0.18em;color:#1a140a;background:linear-gradient(180deg,#f1dca6,#c9a45c 60%,#b08a44);box-shadow:0 0 0 1px #0b0a12, 0 0 0 2px rgba(227,201,143,0.6), 0 0 40px rgba(227,201,143,0.3);" hover="color:#1a140a;filter:brightness(1.08);"><span style={{ fontSize: 11 }}>✦</span>開始占卜<span style={{ fontSize: 11 }}>✦</span></Hv>
-            <span style={css('margin-top:14px;font-size:12px;letter-spacing:0.12em;color:#7d7566;')}>免費 · 不需註冊 · 僅供自我覺察參考</span>
+            <span style={css('margin-top:14px;font-size:12px;letter-spacing:0.12em;color:#7d7566;')}>免費 · 不用註冊 · 結果僅供參考</span>
           </div>
 
           <div aria-hidden="true" style={css('position:relative;width:100%;max-width:1080px;height:clamp(300px,74vw,560px);margin-top:clamp(12px,3vw,32px);')}>
@@ -598,7 +598,7 @@ export default class TarotHome extends React.Component {
                   <ChapterHead eyebrow="CAPITULUM · III" title="你的問題" en="Write it down, as if in ink" extra={<span style={css('margin-left:10px;font-size:13px;font-weight:400;letter-spacing:0.1em;color:#7d7566;')}>選填</span>} />
                   <div style={css('width:100%;max-width:600px;')}>
                     <Hv as="textarea" ref={this.qRef} value={question} onChange={(e) => this.setState({ question: e.target.value })} placeholder={v.theme.ph} rows={2} maxLength={80} aria-label="你的問題" style="width:100%;resize:none;padding:14px 4px 12px;font-size:clamp(16px,2.6vw,18px);line-height:1.9;text-align:center;letter-spacing:0.04em;color:#f3e9d2;background:transparent;border:none;border-bottom:1px solid rgba(201,164,92,0.5);outline:none;font-family:inherit;" focus="border-bottom:1px solid #e3c98f;box-shadow:0 12px 24px -18px rgba(227,201,143,0.6);" />
-                    <p style={css('margin:12px 0 0;text-align:center;font-size:12px;line-height:1.8;color:#7d7566;')}>問題越具體，解讀越有參考價值。例如「我該接受新的工作邀約嗎」比「我的未來如何」更好。</p>
+                    <p style={css('margin:12px 0 0;text-align:center;font-size:12px;line-height:1.8;color:#7d7566;')}>問題寫具體一點比較好解讀，像「我該接受新的工作邀約嗎」就比「我的未來如何」好。</p>
                   </div>
                 </div>
 
@@ -615,7 +615,7 @@ export default class TarotHome extends React.Component {
                 <div style={css('display:flex;flex-direction:column;align-items:center;text-align:center;gap:6px;')}>
                   <span style={css("font-family:'Cinzel',serif;font-size:12px;letter-spacing:0.32em;color:#c9a45c;")}>{v.phase === 'vortex' ? 'MISCERE' : 'ELIGE'}</span>
                   <h2 style={css('margin:0;font-weight:600;font-size:clamp(1.35rem,3.8vw,1.8rem);letter-spacing:0.1em;color:#f3e9d2;')}>{v.phase === 'vortex' ? '洗牌中…' : v.full ? '牌已抽齊' : `請抽 ${v.need} 張牌`}</h2>
-                  <span style={css('max-width:520px;font-size:14px;line-height:1.8;color:#a89f8e;text-wrap:pretty;')}>{v.phase === 'vortex' ? '牌正在旋轉、交融，請在心裡默念你的問題。' : '靜下心想著你的問題，憑直覺從牌扇中點選。'}</span>
+                  <span style={css('max-width:520px;font-size:14px;line-height:1.8;color:#a89f8e;text-wrap:pretty;')}>{v.phase === 'vortex' ? '洗牌中，心裡想著你的問題。' : '想著你的問題，憑感覺點牌。'}</span>
                 </div>
                 {!!question.trim() && <p style={css('margin:0;max-width:560px;text-align:center;font-size:16px;line-height:1.8;letter-spacing:0.04em;color:#e8d8b0;')}>「{question}」</p>}
 
@@ -653,8 +653,8 @@ export default class TarotHome extends React.Component {
             {v.step === 3 && (
               <div style={css('display:flex;flex-direction:column;gap:28px;')}>
                 <div style={css('display:flex;flex-direction:column;align-items:center;text-align:center;gap:8px;')}>
-                  <span style={css("font-family:'Cinzel',serif;font-size:12px;letter-spacing:0.32em;color:#c9a45c;")}>{v.arrange ? 'DISPONE · 調整牌位與正逆位' : `${v.theme.en} · ${sp.name}`}</span>
-                  <h2 style={css('margin:0;max-width:640px;font-weight:600;font-size:clamp(1.3rem,3.8vw,1.8rem);line-height:1.5;letter-spacing:0.06em;color:#f3e9d2;text-wrap:balance;')}>{question.trim() ? `「${question.trim()}」` : `關於${v.theme.label}，牌想告訴你的事`}</h2>
+                  <span style={css("font-family:'Cinzel',serif;font-size:12px;letter-spacing:0.32em;color:#c9a45c;")}>{v.arrange ? 'DISPONE · 翻牌前調整' : `${v.theme.en} · ${sp.name}`}</span>
+                  <h2 style={css('margin:0;max-width:640px;font-weight:600;font-size:clamp(1.3rem,3.8vw,1.8rem);line-height:1.5;letter-spacing:0.06em;color:#f3e9d2;text-wrap:balance;')}>{question.trim() ? `「${question.trim()}」` : `${v.theme.label} · 抽牌結果`}</h2>
                   <span style={css('max-width:560px;font-size:13px;letter-spacing:0.08em;color:#a89f8e;')}>{v.flipHint}</span>
                 </div>
 
@@ -669,7 +669,7 @@ export default class TarotHome extends React.Component {
                             <div style={css('padding-top:12px;text-align:center;display:flex;flex-direction:column;align-items:center;gap:4px;')}>
                               <span style={css('max-width:100%;font-size:11px;letter-spacing:0.1em;color:#f1dca6;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-shadow:0 0 8px rgba(0,0,0,0.9);')}>{s.label}</span>
                               {v.arrange && s.cardI >= 0 ? (
-                                <button onClick={() => this.toggleRev(s.cardI)} aria-label={`切換為${s.rev ? '正位' : '逆位'}`} style={{ ...css('cursor:pointer;min-height:26px;padding:2px 10px;border-radius:999px;font-size:11px;letter-spacing:0.12em;white-space:nowrap;transition:all 250ms ease;'), color: s.rev ? '#cfc8ff' : '#f1dca6', border: `1px solid ${s.rev ? 'rgba(195,186,255,0.6)' : 'rgba(227,201,143,0.6)'}`, background: s.rev ? 'rgba(150,140,255,0.14)' : 'rgba(201,164,92,0.12)' }}>↻ {s.rev ? '逆位' : '正位'}</button>
+                                <button onClick={() => this.toggleRev(s.cardI)} aria-label="把這張牌轉個方向" style={css('cursor:pointer;min-height:26px;padding:2px 10px;border-radius:999px;font-size:11px;letter-spacing:0.12em;white-space:nowrap;transition:all 250ms ease;color:#f1dca6;border:1px solid rgba(227,201,143,0.6);background:rgba(201,164,92,0.12);')}>↻ 轉向</button>
                               ) : (
                                 <span style={{ ...css('max-width:100%;font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;'), color: s.subColor }}>{s.sub}</span>
                               )}
@@ -757,7 +757,7 @@ export default class TarotHome extends React.Component {
               <span style={css("font-family:'Cinzel',serif;font-size:12px;letter-spacing:0.32em;color:#c9a45c;")}>LIBER SPREADS</span>
               <h2 style={css('margin:0;font-weight:600;font-size:clamp(1.7rem,5vw,2.6rem);letter-spacing:0.12em;color:#f3e9d2;')}>常用牌陣說明</h2>
               <Divider style={{ marginTop: 8 }} />
-              <p style={css('margin:10px 0 0;max-width:560px;font-size:15px;line-height:1.9;color:#a89f8e;text-wrap:pretty;')}>每個牌位都有自己的意義。同一張牌放在「障礙」或「優勢」的位置，解讀會完全不同。</p>
+              <p style={css('margin:10px 0 0;max-width:560px;font-size:15px;line-height:1.9;color:#a89f8e;text-wrap:pretty;')}>每個牌位問的事情不一樣。同一張牌放在「障礙」跟放在「優勢」，意思差很多。</p>
             </div>
             <div style={css('display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,320px),1fr));gap:clamp(16px,2.4vw,24px);')}>
               {v.spreadDocs.map((s) => (
