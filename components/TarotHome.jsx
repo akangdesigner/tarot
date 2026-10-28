@@ -9,18 +9,28 @@ import { summarize } from '@/lib/summary'
 
 const AI_API = 'https://tarot-reading.asdtodd42.workers.dev'
 
-// 一天一次的紀錄存在瀏覽器；日期以台灣時間換日
-const DAILY_KEY = 'tarot-daily'
-const today = () => new Date().toLocaleDateString('sv-SE', { timeZone: 'Asia/Taipei' })
-function loadDaily() {
+// 每個主題每週只能抽一次，紀錄存在瀏覽器；以台灣時間的週一換週
+const WEEK_KEY = 'tarot-weekly'
+function weekStart() {
+  const d = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Taipei' }))
+  d.setDate(d.getDate() - ((d.getDay() + 6) % 7))
+  return `${d.getFullYear()}-${d.getMonth() + 1}-${d.getDate()}`
+}
+function loadWeek() {
   try {
-    const d = JSON.parse(localStorage.getItem(DAILY_KEY) || 'null')
-    return d && d.date === today() ? d : null
-  } catch { return null }
+    const w = JSON.parse(localStorage.getItem(WEEK_KEY) || 'null')
+    return w && w.week === weekStart() ? w : { week: weekStart() }
+  } catch { return { week: weekStart() } }
 }
-function saveDaily(patch) {
-  try { localStorage.setItem(DAILY_KEY, JSON.stringify({ ...(loadDaily() || {}), date: today(), ...patch })) } catch {}
+function saveWeek(topic, patch) {
+  try {
+    const w = loadWeek()
+    w[topic] = { ...(w[topic] || {}), ...patch }
+    localStorage.setItem(WEEK_KEY, JSON.stringify(w))
+  } catch {}
 }
+const usedTopics = () => { const w = loadWeek(); return Object.keys(w).filter((k) => k !== 'week' && w[k].picks) }
+
 import { SPREADS, FAQS } from '@/lib/content'
 
 const THEMES = [
@@ -135,7 +145,7 @@ function Logo() {
 }
 
 export default class TarotHome extends React.Component {
-  state = { step: 1, topic: 'career', spread: 'time', question: '', qErr: false, ai: null, locked: false,
+  state = { step: 1, topic: 'career', spread: 'time', question: '', qErr: false, ai: null, used: [], topicUsed: false,
     phase: 'vortex', order: [], delays: null, busy: false,
     picks: [], flyers: [], landed: [], shuffleId: 0,
     arrange: true, slotOf: [], flipped: [], selected: null, hiddenCards: [], dropTarget: null, swapping: false,
@@ -147,14 +157,16 @@ export default class TarotHome extends React.Component {
   _rot = []
 
   componentDidMount() {
-    // 一天只能抽一次：今天抽過就直接顯示今天的結果
-    const d = loadDaily()
-    if (d && d.picks) {
-      const n = d.picks.length
-      this.setState({ step: 3, topic: d.topic, spread: d.spread, question: d.question, picks: d.picks, locked: true,
-        slotOf: d.slotOf || [...Array(n).keys()], flipped: Array(n).fill(true), arrange: false, shuffleId: 1,
-        ai: d.aiText ? { key: 1, status: 'done', text: d.aiText } : null })
-    }
+    // 舊版「一天一次」的紀錄併進這週，今天已抽過的人不會因為改版多抽一次
+    try {
+      const old = JSON.parse(localStorage.getItem('tarot-daily') || 'null')
+      if (old && old.picks && old.topic && !loadWeek()[old.topic]) {
+        const { date, topic, ...rest } = old
+        saveWeek(topic, rest)
+      }
+      localStorage.removeItem('tarot-daily')
+    } catch {}
+    this.setState({ used: usedTopics() })
     this.onResize = () => {
       const el = this.toolRef.current
       const w = el ? el.getBoundingClientRect().width : 0
@@ -190,14 +202,14 @@ export default class TarotHome extends React.Component {
     const done = (patch) => this.setState((s) => (s.ai && s.ai.key === shuffleId ? { ai: { ...s.ai, ...patch } } : null))
     fetch(AI_API, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ topic, spread: sp.name, question: question.trim(), cards }) })
       .then((r) => (r.ok ? r.json() : Promise.reject(r.status)))
-      .then((d) => { done({ status: 'done', text: d.text }); saveDaily({ aiText: d.text }) })
+      .then((d) => { done({ status: 'done', text: d.text }); saveWeek(topic, { aiText: d.text }) })
       .catch(() => done({ status: 'error' }))
   }
 
   spreadDef() { return SPREADS.find((s) => s.key === this.state.spread) }
 
   startDraw = () => {
-    if (this.state.locked) return
+    if (this.state.used.includes(this.state.topic)) { this.setState({ topicUsed: true }); return }
     if (!this.state.question.trim()) {
       this.setState({ qErr: true })
       if (this.qRef.current) this.qRef.current.focus()
@@ -236,9 +248,10 @@ export default class TarotHome extends React.Component {
     const n = this.spreadDef().pos.length
     if (this.state.landed.length < n) return
     this.clearTimers()
-    this.setState({ step: 3, arrange: true, locked: true, slotOf: [...Array(n).keys()], flipped: Array(n).fill(false), flyers: [], selected: null, hiddenCards: [], dropTarget: null, swapping: false })
+    this.setState((s) => ({ used: [...new Set([...s.used, s.topic])] }))
+    this.setState({ step: 3, arrange: true, slotOf: [...Array(n).keys()], flipped: Array(n).fill(false), flyers: [], selected: null, hiddenCards: [], dropTarget: null, swapping: false })
     const { topic, spread, question, picks } = this.state
-    saveDaily({ topic, spread, question: question.trim(), picks })
+    saveWeek(topic, { spread, question: question.trim(), picks })
     this.scrollTool()
   }
 
@@ -320,23 +333,33 @@ export default class TarotHome extends React.Component {
     const st = this.state
     if (!st.arrange || st.swapping) return
     this.setState({ arrange: false, selected: null })
-    saveDaily({ slotOf: st.slotOf })
+    saveWeek(st.topic, { slotOf: st.slotOf })
     const first = st.slotOf.indexOf(0)
     this.later(() => this.flip(first), 250)
   }
   flip = (i) => this.setState((s) => { if (s.arrange) return null; const f = s.flipped.slice(); f[i] = true; return { flipped: f } })
   flipNext = () => { const st = this.state; const n = st.slotOf.length; for (let p = 0; p < n; p++) { const i = st.slotOf.indexOf(p); if (!st.flipped[i]) { this.flip(i); return } } }
+  // 打開這週某個主題抽過的結果
+  showSaved = (t) => {
+    const d = loadWeek()[t]
+    if (!d || !d.picks) return
+    const n = d.picks.length
+    this.clearTimers()
+    this.setState((s) => ({ step: 3, topic: t, spread: d.spread, question: d.question, picks: d.picks, topicUsed: false,
+      slotOf: d.slotOf || [...Array(n).keys()], flipped: Array(n).fill(true), arrange: false, shuffleId: s.shuffleId + 1,
+      ai: d.aiText ? { key: s.shuffleId + 1, status: 'done', text: d.aiText } : null }))
+    this.scrollTool()
+  }
   newQuestion = () => {
-    if (this.state.locked) return
     this.clearTimers()
     this.endDrag()
-    this.setState({ step: 1, question: '', picks: [], flipped: [], flyers: [], landed: [], selected: null, hiddenCards: [] })
+    this.setState((s) => ({ step: 1, question: '', topicUsed: false, topic: s.used.includes(s.topic) ? (THEMES.find((t) => !s.used.includes(t.key)) || {}).key || s.topic : s.topic, picks: [], flipped: [], flyers: [], landed: [], selected: null, hiddenCards: [] }))
     this.scrollTool()
     this.later(() => this.qRef.current && this.qRef.current.focus({ preventScroll: true }), 600)
   }
 
   vals() {
-    const { step, topic, spread, question, qErr, ai, locked, phase, order, delays, busy, picks, flyers, landed, shuffleId, arrange, slotOf, flipped, selected, hiddenCards, dropTarget, swapping, vw, toolW, faq } = this.state
+    const { step, topic, spread, question, qErr, ai, used, topicUsed, phase, order, delays, busy, picks, flyers, landed, shuffleId, arrange, slotOf, flipped, selected, hiddenCards, dropTarget, swapping, vw, toolW, faq } = this.state
     const T = TAROT
     const isDesk = vw >= 900
     const sp = this.spreadDef()
@@ -359,13 +382,13 @@ export default class TarotHome extends React.Component {
         glow: active ? '0 0 20px rgba(227,201,143,0.35)' : 'none',
         numColor: active ? '#f6e7bf' : done ? '#c9a45c' : '#5f5848' }
     })
-    const themes = THEMES.map((t) => { const on = t.key === topic; return { ...t, on,
+    const themes = THEMES.map((t) => { const on = t.key === topic; return { ...t, on, sub: used.includes(t.key) ? '本週已抽' : t.sub,
       bd: on ? 'rgba(227,201,143,0.9)' : 'rgba(201,164,92,0.3)',
       bg: on ? 'radial-gradient(ellipse 80% 55% at 50% 38%, rgba(201,164,92,0.22), rgba(20,19,39,0.92) 72%)' : 'rgba(20,19,39,0.55)',
       glow: on ? '0 0 36px rgba(201,164,92,0.25), inset 0 0 0 5px #0e0c18, inset 0 0 0 6px rgba(227,201,143,0.45)' : 'inset 0 0 0 5px #0e0c18, inset 0 0 0 6px rgba(201,164,92,0.12)',
       glyphColor: on ? '#f3dfa8' : '#7d7566', glyphShadow: on ? '0 0 22px rgba(243,223,168,0.75)' : 'none',
       labelColor: on ? '#f3e9d2' : '#a89f8e', enColor: on ? '#e3c98f' : '#6f6857',
-      onClick: () => this.setState({ topic: t.key }) } })
+      onClick: () => this.setState({ topic: t.key, topicUsed: false }) } })
     const spreads = SPREADS.map((s, i) => { const on = s.key === spread; return { key: s.key, name: s.name, on, numeral: RN[i], count: s.pos.length,
       color: on ? '#f3e9d2' : '#9d937e', numColor: on ? '#e3c98f' : '#6f6857',
       line: on ? '#e3c98f' : 'transparent', lineGlow: on ? '0 0 12px rgba(227,201,143,0.7)' : 'none',
@@ -478,7 +501,7 @@ export default class TarotHome extends React.Component {
     const ready = landed.length >= need
 
     return {
-      isDesk, step, stepsNav, themes, spreads, sp, need, theme, question, qErr, ai, locked, phase, full, isDraw, tablePad,
+      isDesk, step, stepsNav, themes, spreads, sp, need, theme, question, qErr, ai, topicUsed, otherLeft: THEMES.some((t) => !used.includes(t.key)), phase, full, isDraw, tablePad,
       pv: { w: pvW, h: pvH, cw: pcw, ch: pch, slots: pvSlots, numSize: Math.round(pcw * 0.26) },
       deck: { cards: deckCards, h: H, cw, ch },
       shuffleFx: phase === 'vortex' ? R.shuffle(h, { cw, ch, R: Math.min(W, H) * 0.3, id: shuffleId }) : null,
@@ -660,6 +683,12 @@ export default class TarotHome extends React.Component {
                   <Divider />
                   <Hv as="button" onClick={this.startDraw} style={`cursor:pointer;border:none;width:100%;max-width:380px;min-height:56px;margin-top:6px;padding:14px 28px;border-radius:2px;display:flex;align-items:center;justify-content:center;gap:14px;font-size:17px;letter-spacing:0.18em;color:#1a140a;background:${GOLD_BTN};box-shadow:0 0 0 1px #0e0c18, 0 0 0 2px rgba(227,201,143,0.6), 0 0 44px rgba(227,201,143,0.3);transition:filter 200ms ease, box-shadow 300ms ease;`} hover="filter:brightness(1.08);box-shadow:0 0 0 1px #0e0c18, 0 0 0 2px rgba(227,201,143,0.8), 0 0 60px rgba(227,201,143,0.45);"><span style={{ fontSize: 11 }}>✦</span>洗牌，開始抽牌<span style={{ fontSize: 11 }}>✦</span></Hv>
                   <span style={css('font-size:12px;letter-spacing:0.12em;color:#7d7566;')}>{`${v.theme.label} · ${sp.name} · 抽 ${v.need} 張`}</span>
+                  {v.topicUsed && (
+                    <div role="alert" style={css('display:flex;flex-direction:column;align-items:center;gap:10px;')}>
+                      <p style={css('margin:0;text-align:center;font-size:14px;line-height:1.8;color:#f0b8a8;')}>{`這週的${v.theme.label}已經抽過了，下週一可以再抽，或換一個主題。`}</p>
+                      <Hv as="button" onClick={() => this.showSaved(topic)} style="cursor:pointer;min-height:44px;padding:10px 24px;border-radius:2px;font-size:14px;letter-spacing:0.14em;color:#e8d8b0;border:1px solid rgba(201,164,92,0.55);background:transparent;" hover="background:rgba(201,164,92,0.1);color:#f3e9d2;">{`看這週的${v.theme.label}結果`}</Hv>
+                    </div>
+                  )}
                 </div>
               </div>
             )}
@@ -805,13 +834,11 @@ export default class TarotHome extends React.Component {
                     {v.allFlipped && (
                       <div style={css('padding-top:26px;border-top:1px solid rgba(201,164,92,0.22);display:flex;flex-direction:column;align-items:center;gap:16px;text-align:center;')}>
                         <Divider />
-{v.locked ? (
-                          <p style={css('margin:0;font-size:15px;line-height:1.9;color:#e3c98f;')}>今天已經抽過了，明天再來抽。</p>
+<p style={css('margin:0;font-size:15px;line-height:1.9;color:#e3c98f;')}>{`這週的${v.theme.label}已經抽過了，下週一可以再抽。`}</p>
+                        {v.otherLeft ? (
+                          <Hv as="button" onClick={this.newQuestion} style="cursor:pointer;width:100%;min-height:52px;padding:12px 24px;border-radius:2px;font-size:16px;letter-spacing:0.16em;color:#e8d8b0;border:1px solid rgba(201,164,92,0.55);background:transparent;" hover="background:rgba(201,164,92,0.1);color:#f3e9d2;">抽其他主題</Hv>
                         ) : (
-                        <div style={css('display:flex;flex-wrap:wrap;gap:12px;width:100%;')}>
-                          <Hv as="button" onClick={this.startDraw} style={`cursor:pointer;flex:1 1 160px;border:none;min-height:52px;padding:12px 24px;border-radius:2px;font-size:16px;letter-spacing:0.16em;color:#1a140a;background:${GOLD_BTN};box-shadow:0 0 0 1px #0e0c18, 0 0 0 2px rgba(227,201,143,0.6), 0 0 36px rgba(227,201,143,0.25);`} hover="filter:brightness(1.08);">再抽一次</Hv>
-                          <Hv as="button" onClick={this.newQuestion} style="cursor:pointer;flex:1 1 160px;min-height:52px;padding:12px 24px;border-radius:2px;font-size:16px;letter-spacing:0.16em;color:#e8d8b0;border:1px solid rgba(201,164,92,0.55);background:transparent;" hover="background:rgba(201,164,92,0.1);color:#f3e9d2;">換一個問題</Hv>
-                        </div>
+                          <p style={css('margin:0;font-size:13px;line-height:1.8;color:#8a8170;')}>三個主題這週都抽過了。</p>
                         )}
                       </div>
                     )}
