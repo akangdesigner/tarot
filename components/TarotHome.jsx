@@ -6,6 +6,8 @@ import { css, Hv } from '@/lib/css'
 import { TAROT } from '@/lib/tarot-data'
 import { RitualFX } from '@/lib/ritual-fx'
 import { summarize } from '@/lib/summary'
+
+const AI_API = 'https://tarot-reading.asdtodd42.workers.dev'
 import { SPREADS, FAQS } from '@/lib/content'
 
 const THEMES = [
@@ -120,7 +122,7 @@ function Logo() {
 }
 
 export default class TarotHome extends React.Component {
-  state = { step: 1, topic: 'career', spread: 'time', question: '', qErr: false,
+  state = { step: 1, topic: 'career', spread: 'time', question: '', qErr: false, ai: null,
     phase: 'vortex', order: [], delays: null, busy: false,
     picks: [], flyers: [], landed: [], shuffleId: 0,
     arrange: true, slotOf: [], flipped: [], selected: null, hiddenCards: [], dropTarget: null, swapping: false,
@@ -153,6 +155,24 @@ export default class TarotHome extends React.Component {
   scrollTool() {
     this.later(() => { const el = this.toolRef.current; if (el) window.scrollTo({ top: el.getBoundingClientRect().top + window.scrollY - 72, behavior: 'smooth' }) }, 30)
   }
+  // 牌全翻開後，把問題和牌送到 AI 後端寫結論；失敗就留著規則版結論
+  componentDidUpdate() {
+    const { step, arrange, flipped, picks, slotOf, shuffleId, ai, topic, question } = this.state
+    const sp = this.spreadDef()
+    if (step !== 3 || arrange || flipped.filter(Boolean).length !== sp.pos.length || (ai && ai.key === shuffleId)) return
+    this.setState({ ai: { key: shuffleId, status: 'loading', text: '' } })
+    const cards = sp.pos.map((p, pi) => {
+      const pk = picks[slotOf.indexOf(pi)], card = TAROT.cards[pk.id]
+      return { label: p[0], posNote: p[1], name: card.name, rev: !!pk.rev,
+        keywords: (pk.rev ? card.revKw : card.upKw).join('、'), meaning: pk.rev ? card.rev : card.up }
+    })
+    const done = (patch) => this.setState((s) => (s.ai && s.ai.key === shuffleId ? { ai: { ...s.ai, ...patch } } : null))
+    fetch(AI_API, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ topic, spread: sp.name, question: question.trim(), cards }) })
+      .then((r) => (r.ok ? r.json() : Promise.reject(r.status)))
+      .then((d) => done({ status: 'done', text: d.text }))
+      .catch(() => done({ status: 'error' }))
+  }
+
   spreadDef() { return SPREADS.find((s) => s.key === this.state.spread) }
 
   startDraw = () => {
@@ -290,7 +310,7 @@ export default class TarotHome extends React.Component {
   }
 
   vals() {
-    const { step, topic, spread, question, qErr, phase, order, delays, busy, picks, flyers, landed, shuffleId, arrange, slotOf, flipped, selected, hiddenCards, dropTarget, swapping, vw, toolW, faq } = this.state
+    const { step, topic, spread, question, qErr, ai, phase, order, delays, busy, picks, flyers, landed, shuffleId, arrange, slotOf, flipped, selected, hiddenCards, dropTarget, swapping, vw, toolW, faq } = this.state
     const T = TAROT
     const isDesk = vw >= 900
     const sp = this.spreadDef()
@@ -432,7 +452,7 @@ export default class TarotHome extends React.Component {
     const ready = landed.length >= need
 
     return {
-      isDesk, step, stepsNav, themes, spreads, sp, need, theme, question, qErr, phase, full, isDraw, tablePad,
+      isDesk, step, stepsNav, themes, spreads, sp, need, theme, question, qErr, ai, phase, full, isDraw, tablePad,
       pv: { w: pvW, h: pvH, cw: pcw, ch: pch, slots: pvSlots, numSize: Math.round(pcw * 0.26) },
       deck: { cards: deckCards, h: H, cw, ch },
       shuffleFx: phase === 'vortex' ? R.shuffle(h, { cw, ch, R: Math.min(W, H) * 0.3, id: shuffleId }) : null,
@@ -716,7 +736,9 @@ export default class TarotHome extends React.Component {
                           <span style={css('font-size:15px;letter-spacing:0.24em;color:#f1dca6;')}>簡短結論</span>
                         </div>
                         <p style={css('margin:0;font-size:14px;line-height:1.8;color:#a89f8e;')}>你問：「{question.trim()}」</p>
-                        {v.summary.map((t) => <p key={t} style={css('margin:0;font-size:15px;line-height:2;color:#d6cab0;text-wrap:pretty;')}>{t}</p>)}
+                        {v.ai && v.ai.status === 'loading' && <p style={css("margin:0;font-family:'Lora',serif;font-style:italic;font-size:14px;color:#8a8170;")}>正在讀你的牌…</p>}
+                        {v.ai && v.ai.status === 'done' && <p style={css('margin:0;font-size:15px;line-height:2;color:#d6cab0;text-wrap:pretty;white-space:pre-line;')}>{v.ai.text}</p>}
+                        {v.ai && v.ai.status === 'error' && v.summary.map((t) => <p key={t} style={css('margin:0;font-size:15px;line-height:2;color:#d6cab0;text-wrap:pretty;')}>{t}</p>)}
                       </div>
                     )}
                     {v.arrange && (
