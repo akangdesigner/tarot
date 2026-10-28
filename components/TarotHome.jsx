@@ -650,7 +650,7 @@ export default class TarotHome extends React.Component {
                 <div style={css('display:flex;flex-direction:column;align-items:center;gap:18px;')}>
                   <ChapterHead eyebrow="CAPITULUM · III" title="你的問題" en="Write it down, as if in ink" extra={<span style={css('margin-left:10px;font-size:13px;font-weight:400;letter-spacing:0.1em;color:#c9a45c;')}>必填</span>} />
                   <div style={css('width:100%;max-width:600px;')}>
-                    <Hv as="textarea" ref={this.qRef} value={question} onChange={(e) => this.setState({ question: e.target.value, qErr: false })} placeholder={v.theme.ph} rows={2} maxLength={80} aria-label="你的問題" style="width:100%;resize:none;padding:14px 4px 12px;font-size:clamp(16px,2.6vw,18px);line-height:1.9;text-align:center;letter-spacing:0.04em;color:#f3e9d2;background:transparent;border:none;border-bottom:1px solid rgba(201,164,92,0.5);outline:none;font-family:inherit;" focus="border-bottom:1px solid #e3c98f;box-shadow:0 12px 24px -18px rgba(227,201,143,0.6);" />
+                    <Hv as="textarea" ref={this.qRef} value={question} onChange={(e) => this.setState({ question: e.target.value, qErr: false })} placeholder={v.theme.ph} rows={3} maxLength={200} aria-label="你的問題" style="width:100%;resize:none;padding:14px 4px 12px;font-size:clamp(16px,2.6vw,18px);line-height:1.9;text-align:center;letter-spacing:0.04em;color:#f3e9d2;background:transparent;border:none;border-bottom:1px solid rgba(201,164,92,0.5);outline:none;font-family:inherit;" focus="border-bottom:1px solid #e3c98f;box-shadow:0 12px 24px -18px rgba(227,201,143,0.6);" />
                     {v.qErr && <p role="alert" style={css('margin:12px 0 0;text-align:center;font-size:14px;line-height:1.8;color:#f0b8a8;')}>先寫下你的問題再抽牌，結論才會對得上你問的事。</p>}
                     <p style={css('margin:12px 0 0;text-align:center;font-size:12px;line-height:1.8;color:#7d7566;')}>問題寫具體一點比較好解讀，像「我該接受新的工作邀約嗎」就比「我的未來如何」好。</p>
                   </div>
@@ -759,11 +759,14 @@ export default class TarotHome extends React.Component {
                         <div style={css('display:flex;align-items:center;gap:12px;')}>
                           <span style={css("font-family:'Cinzel',serif;font-size:12px;letter-spacing:0.32em;color:#c9a45c;")}>SUMMA</span>
                           <span style={css('height:1px;width:18px;background:rgba(201,164,92,0.5);')} />
-                          <span style={css('font-size:15px;letter-spacing:0.24em;color:#f1dca6;')}>簡短結論</span>
+                          <span style={css('font-size:15px;letter-spacing:0.24em;color:#f1dca6;')}>總評</span>
                         </div>
                         <p style={css('margin:0;font-size:14px;line-height:1.8;color:#a89f8e;')}>你問：「{question.trim()}」</p>
                         {v.ai && v.ai.status === 'loading' && <p style={css("margin:0;font-family:'Lora',serif;font-style:italic;font-size:14px;color:#8a8170;")}>正在讀你的牌…</p>}
-                        {v.ai && v.ai.status === 'done' && <p style={css('margin:0;font-size:15px;line-height:2;color:#d6cab0;text-wrap:pretty;white-space:pre-line;')}>{v.ai.text}</p>}
+                        {v.ai && v.ai.status === 'done' && v.ai.text.split(/\n\s*\n/).map((para, k) => {
+                          const m = para.match(/^([^：\n]{1,12})：([\s\S]*)$/)
+                          return <p key={k} style={css('margin:0;font-size:15px;line-height:2;color:#d6cab0;text-wrap:pretty;white-space:pre-line;')}>{m ? <><span style={css('color:#e3c98f;font-weight:600;')}>{m[1]}：</span>{m[2].trim()}</> : para}</p>
+                        })}
                         {v.ai && v.ai.status === 'error' && v.summary.map((t) => <p key={t} style={css('margin:0;font-size:15px;line-height:2;color:#d6cab0;text-wrap:pretty;')}>{t}</p>)}
                       </div>
                     )}
