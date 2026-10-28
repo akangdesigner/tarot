@@ -1,6 +1,6 @@
 'use client'
 // 夜讀塔羅首頁：主視覺、三步驟占卜（選主題與牌陣 → 抽牌 → 調整牌位與正逆位後翻牌）、牌陣說明、FAQ。
-// 版面照 Claude Design「Tarot Home v3」重現；抽完牌後使用者可憑感覺把牌轉向（不是選正逆位，按鈕不標示正逆）。
+// 版面照 Claude Design「Tarot Home v3」重現；正逆位抽牌時隨機決定；翻牌前使用者可以轉動牌背，但不影響正逆位。
 import React from 'react'
 import { css, Hv } from '@/lib/css'
 import { TAROT } from '@/lib/tarot-data'
@@ -174,8 +174,8 @@ export default class TarotHome extends React.Component {
       const a = el.getBoundingClientRect(), b = target.getBoundingClientRect(), w = el.offsetWidth, hh = el.offsetHeight
       fl = { id: 'p' + Date.now() + '-' + idx, idx, rot: this._rot[k] || 0, from: { x: a.left + a.width / 2 - w / 2, y: a.top + a.height / 2 - hh / 2, w, h: hh }, to: { x: b.left, y: b.top, w: b.width, h: b.height } }
     }
-    // 抽到的牌一律先正位，翻牌前再由使用者決定要不要轉成逆位
-    this.setState((s) => ({ picks: [...s.picks, { k, id: k, rev: false }], flyers: fl ? [...s.flyers, fl] : s.flyers, landed: fl ? s.landed : [...s.landed, idx] }))
+    // 正逆位抽牌時隨機決定；翻牌前的「轉向」只是讓使用者轉動牌背，不影響正逆位，翻開時才照 rev 擺正
+    this.setState((s) => ({ picks: [...s.picks, { k, id: k, rev: Math.random() < 0.5, turned: false }], flyers: fl ? [...s.flyers, fl] : s.flyers, landed: fl ? s.landed : [...s.landed, idx] }))
     if (fl) this.later(() => this.land(fl), 900)
   }
   land(fl) {
@@ -195,7 +195,7 @@ export default class TarotHome extends React.Component {
   // ── 翻牌前：調換牌位、切換正逆位 ──
   toggleRev = (i) => {
     if (!this.state.arrange || this.state.swapping) return
-    this.setState((s) => ({ picks: s.picks.map((p, j) => (j === i ? { ...p, rev: !p.rev } : p)), selected: null }))
+    this.setState((s) => ({ picks: s.picks.map((p, j) => (j === i ? { ...p, turned: !p.turned } : p)), selected: null }))
   }
   cardEl(i) { const r = this.spreadRef.current; return r ? r.querySelector(`[data-card-i="${i}"]`) : null }
   slotEl(p) { const r = this.spreadRef.current; return r ? r.querySelector(`[data-pos-box="${p}"]`) : null }
@@ -394,7 +394,7 @@ export default class TarotHome extends React.Component {
         lift: sel ? 'translateY(-10px) scale(1.05)' : 'none', touch: arrange ? 'none' : 'auto',
         backGlow: sel ? 'inset 0 0 0 5px #141327, inset 0 0 0 6px rgba(243,214,140,0.8), 0 0 30px rgba(243,214,140,0.65), 0 14px 30px rgba(0,0,0,0.6)'
           : `inset 0 0 0 5px #141327, inset 0 0 0 6px ${backRing}, 0 14px 30px rgba(0,0,0,0.6)`,
-        rot: f ? 'rotateY(180deg)' : 'rotateY(0deg)', zrot: rev ? 'rotate(180deg)' : 'rotate(0deg)',
+        rot: f ? 'rotateY(180deg)' : 'rotateY(0deg)', zrot: (f ? rev : pk.turned) ? 'rotate(180deg)' : 'rotate(0deg)',
         zTransition: arrange ? 'transform 600ms cubic-bezier(0.16,1,0.3,1)' : 'transform 900ms cubic-bezier(0.6,0,0.2,1)',
         backMark: '#e3c98f',
         faceGlow: !f ? '0 0 0 1px rgba(227,201,143,0.5)' : rev ? '0 0 0 1px rgba(195,186,255,0.85), 0 0 46px rgba(150,140,255,0.5), 0 14px 30px rgba(0,0,0,0.6)' : '0 0 0 1px rgba(227,201,143,0.85), 0 0 46px rgba(243,212,138,0.45), 0 14px 30px rgba(0,0,0,0.6)',
