@@ -5,6 +5,7 @@ import React from 'react'
 import { css, Hv } from '@/lib/css'
 import { TAROT } from '@/lib/tarot-data'
 import { RitualFX } from '@/lib/ritual-fx'
+import { summarize } from '@/lib/summary'
 import { SPREADS, FAQS } from '@/lib/content'
 
 const THEMES = [
@@ -415,6 +416,7 @@ export default class TarotHome extends React.Component {
     })
     const nFlipped = flipped.filter(Boolean).length
     const allFlipped = step === 3 && !arrange && nFlipped === need
+    const summary = allFlipped ? summarize(sp.key, sp.pos.map((p, pi) => { const pk = picked[cardAt(pi)]; return { label: p[0], card: pk.card, rev: !!pk.rev } })) : null
 
     const spreadDocs = SPREADS.map((s, i) => {
       const mx = Math.max(...s.pos.map((p) => p[2])), my = Math.max(...s.pos.map((p) => p[3]))
@@ -434,7 +436,7 @@ export default class TarotHome extends React.Component {
       flipHint: arrange
         ? (need > 1 ? '翻牌前可以調整：把牌拖到別的位置互換，或先後點兩張牌對調；想把哪張牌轉過來，就按牌下面的「轉向」。好了就按「翻牌」。' : '翻牌前，想把牌轉過來就按牌下面的「轉向」。好了就按「翻牌」。')
         : allFlipped ? '所有牌都已翻開' : `點擊牌面，依序翻開 · ${nFlipped} / ${need}`,
-      details, allFlipped, canFlipNext: step === 3 && !arrange && nFlipped < need, spreadDocs, faqs
+      details, allFlipped, summary, canFlipNext: step === 3 && !arrange && nFlipped < need, spreadDocs, faqs
     }
   }
 
@@ -700,6 +702,16 @@ export default class TarotHome extends React.Component {
                         ))}
                       </div>
                     </div>
+                    {v.summary && (
+                      <div style={css('width:100%;padding:24px 26px;border:1px solid rgba(201,164,92,0.35);background:radial-gradient(ellipse 80% 60% at 50% 0%, rgba(201,164,92,0.08), transparent 70%), rgba(14,12,24,0.55);display:flex;flex-direction:column;gap:14px;')}>
+                        <div style={css('display:flex;align-items:center;gap:12px;')}>
+                          <span style={css("font-family:'Cinzel',serif;font-size:12px;letter-spacing:0.32em;color:#c9a45c;")}>SUMMA</span>
+                          <span style={css('height:1px;width:18px;background:rgba(201,164,92,0.5);')} />
+                          <span style={css('font-size:15px;letter-spacing:0.24em;color:#f1dca6;')}>簡短結論</span>
+                        </div>
+                        {v.summary.map((t) => <p key={t} style={css('margin:0;font-size:15px;line-height:2;color:#d6cab0;text-wrap:pretty;')}>{t}</p>)}
+                      </div>
+                    )}
                     {v.arrange && (
                       <Hv as="button" onClick={this.startReveal} style={`cursor:pointer;border:none;width:100%;max-width:380px;min-height:56px;padding:14px 28px;border-radius:2px;display:flex;align-items:center;justify-content:center;gap:14px;font-size:17px;letter-spacing:0.18em;color:#1a140a;opacity:${v.swapping ? 0.5 : 1};background:${GOLD_BTN};box-shadow:0 0 0 1px #0e0c18, 0 0 0 2px rgba(227,201,143,0.6), 0 0 44px rgba(227,201,143,0.3);transition:opacity 200ms ease, filter 200ms ease;`} hover="filter:brightness(1.08);"><span style={{ fontSize: 11 }}>✦</span>翻牌<span style={{ fontSize: 11 }}>✦</span></Hv>
                     )}
@@ -735,7 +747,6 @@ export default class TarotHome extends React.Component {
                     {v.allFlipped && (
                       <div style={css('padding-top:26px;border-top:1px solid rgba(201,164,92,0.22);display:flex;flex-direction:column;align-items:center;gap:16px;text-align:center;')}>
                         <Divider />
-                        <p style={css('margin:0;font-size:14px;line-height:1.9;color:#8a8170;')}>以上是簡短結論。想聽完整解讀，把這個畫面截圖，傳給邀請你來抽牌的人。</p>
                         <div style={css('display:flex;flex-wrap:wrap;gap:12px;width:100%;')}>
                           <Hv as="button" onClick={this.startDraw} style={`cursor:pointer;flex:1 1 160px;border:none;min-height:52px;padding:12px 24px;border-radius:2px;font-size:16px;letter-spacing:0.16em;color:#1a140a;background:${GOLD_BTN};box-shadow:0 0 0 1px #0e0c18, 0 0 0 2px rgba(227,201,143,0.6), 0 0 36px rgba(227,201,143,0.25);`} hover="filter:brightness(1.08);">再抽一次</Hv>
                           <Hv as="button" onClick={this.newQuestion} style="cursor:pointer;flex:1 1 160px;min-height:52px;padding:12px 24px;border-radius:2px;font-size:16px;letter-spacing:0.16em;color:#e8d8b0;border:1px solid rgba(201,164,92,0.55);background:transparent;" hover="background:rgba(201,164,92,0.1);color:#f3e9d2;">換一個問題</Hv>
