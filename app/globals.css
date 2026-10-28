@@ -1,0 +1,22 @@
+html,body{margin:0;padding:0;background:#0b0a12;}
+html{scroll-behavior:smooth;}
+body{color:#ddd3bd;font-family:'Noto Serif TC','Songti TC',serif;-webkit-font-smoothing:antialiased;line-height:1.8;}
+*{box-sizing:border-box;}
+a{color:#e3c98f;text-decoration:none;transition:color 200ms ease;}
+button{font-family:inherit;}
+textarea::placeholder{color:#6f6857;font-style:italic;}
+@keyframes twinkle{0%,100%{opacity:.15;transform:scale(.6)}50%{opacity:1;transform:scale(1)}}
+@keyframes flicker{0%,100%{transform:scaleY(1) skewX(0deg)}20%{transform:scaleY(1.1) skewX(2deg)}45%{transform:scaleY(.92) skewX(-3deg)}70%{transform:scaleY(1.05) skewX(1deg)}}
+@keyframes glow{0%,100%{opacity:.7}50%{opacity:1}}
+@keyframes drift{0%{transform:translateX(-9%)}100%{transform:translateX(9%)}}
+@keyframes swirl{to{transform:rotate(360deg)}}
+@keyframes rise{0%{transform:translateY(0);opacity:0}30%{opacity:.8}100%{transform:translateY(-60px);opacity:0}}
+@keyframes twinkleSoft{0%,100%{opacity:.25}50%{opacity:.85}}
+@keyframes deckFloat{0%{transform:translateY(0)}100%{transform:translateY(-4px)}}
+@keyframes ritualShuffle{0%{transform:rotate(0deg) translate(0px,0px) rotate(0deg)}16%{transform:rotate(0deg) translate(var(--sx),0px) rotate(var(--sr))}30%{transform:rotate(0deg) translate(0px,var(--sy)) rotate(0deg)}44%{transform:rotate(var(--a)) translate(0px,calc(var(--R) * -1)) rotate(0deg)}82%{transform:rotate(calc(var(--a) + 360deg)) translate(0px,calc(var(--R) * -1)) rotate(0deg)}100%{transform:rotate(calc(var(--a) + 450deg)) translate(0px,0px) rotate(0deg)}}
+@keyframes ringPulse{0%{opacity:0;transform:scale(.4)}35%{opacity:1;transform:scale(1)}85%{opacity:.9;transform:scale(1.04)}100%{opacity:0;transform:scale(1.2)}}
+@keyframes burstFlash{0%{opacity:0;transform:scale(.15)}12%{opacity:1}100%{opacity:0;transform:scale(1.5)}}
+@keyframes burstRays{0%{opacity:0;transform:scale(.3) rotate(0deg)}20%{opacity:.9}100%{opacity:0;transform:scale(1.3) rotate(35deg)}}
+@keyframes burstRing{0%{opacity:1;transform:scale(.2)}100%{opacity:0;transform:scale(2.1)}}
+@keyframes burstSpark{0%{opacity:0;transform:translate(0px,0px) scale(1)}8%{opacity:1}70%{opacity:.9}100%{opacity:0;transform:translate(var(--dx),var(--dy)) scale(.3)}}
+@media (prefers-reduced-motion: reduce){*{animation:none!important;}}
