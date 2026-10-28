@@ -1,7 +1,7 @@
 // 夜讀塔羅的 AI 結論後端：收到問題與翻開的牌，請 Claude Haiku 寫一段簡短結論。
 // 金鑰放在 Worker secret OPENROUTER_API_KEY，前端看不到。
 const ALLOW = ['https://akangdesigner.github.io', 'http://localhost:3300']
-const MODEL = 'anthropic/claude-haiku-5.5'
+const MODEL = 'anthropic/claude-sonnet-5.5'
 const TOPIC = { career: '事業', love: '愛情', study: '學業' }
 
 const SYSTEM = `你是塔羅占卜網站的解牌者，用繁體中文、台灣口語，替使用者這次抽的牌寫「總評」。網頁上已經有每張牌的單獨解釋，不用逐張重講牌義。
@@ -11,8 +11,8 @@ const SYSTEM = `你是塔羅占卜網站的解牌者，用繁體中文、台灣�
 - 最後一段寫「你現在可以做的」：兩到三件具體的事，要能從牌推得出來。
 - 只用使用者寫出來的情況，不要編他沒說的細節。
 - 正位不一定是好事，逆位也不一定是壞事，照牌本身的意思判斷。
-格式：純文字，三到四段，每段開頭是「小標：」，小標依問題而定，例如「接下來的發展：」「能不能復合：」「你現在可以做的：」。段落之間空一行。總長 250 到 400 字。
-語氣平實，像朋友講話。不要用「能量」「宇宙」「旅程」「療癒」這類詞，不要用「不是……而是……」句型，不要用破折號，不要用 Markdown 符號，不要開場白和客套結尾。
+格式：純文字，三到四段，段落之間空一行。每一段都必須以「小標：」開頭，第一段也一樣。小標是使用者問題裡的小問題，例如「接下來的發展：」「能不能復合：」，最後一段固定是「你現在可以做的：」。牌名寫在段落內文裡，用來說明理由，不要用牌來分段。總長 250 到 400 字，超過就刪。
+語氣平實，像朋友講話。不要用「能量」「宇宙」「旅程」「療癒」這類詞，不要用「不是……而是……」「而不是」「不只是……更是……」句型，不要用破折號，不要用 Markdown 符號，不要開場白和客套結尾。
 不保證結果，不給醫療、法律、投資建議；問題跟這些有關時，提醒對方以實際情況或專業意見為準。`
 
 function cors(origin) {
@@ -44,7 +44,7 @@ export default {
     const r = await fetch('https://openrouter.ai/api/v1/chat/completions', {
       method: 'POST',
       headers: { Authorization: `Bearer ${env.OPENROUTER_API_KEY}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ model: MODEL, max_tokens: 1500, reasoning: { enabled: false }, messages: [{ role: 'system', content: SYSTEM }, { role: 'user', content: user }] }),
+      body: JSON.stringify({ model: MODEL, max_tokens: 4000, reasoning: { effort: 'low' }, messages: [{ role: 'system', content: SYSTEM }, { role: 'user', content: user }] }),
     })
     if (!r.ok) { console.log('openrouter', r.status, (await r.text()).slice(0, 300)); return new Response('Upstream Error', { status: 502, headers: h }) }
     const data = await r.json()
